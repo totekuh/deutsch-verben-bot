@@ -105,7 +105,21 @@ class DeklinationResponse:
                            and word != '·']
 
         deklination_tag = soup.find('section', {'class': 'rBox rBoxTrns'})
-        self.deklination = re.sub(r"\n{2,}", "\n\n", deklination_tag.text)
+        chunks = []
+        for line in deklination_tag.text.split('\n'):
+            if 'Weitere Informationen finden sich' in line:
+                pass
+            elif line.startswith('Zusammenfassung'):
+                pass
+            elif line.startswith('Deklinationsformen'):
+                pass
+            elif line.startswith('Deklinationsformen'):
+                pass
+            elif line.startswith('Deklination'):
+                pass
+            else:
+                chunks.append(line)
+        self.deklination = re.sub(r"\n{2,}", "\n\n", '\n'.join(chunks))
 
         try:
             for lang in translations:
@@ -143,6 +157,10 @@ class DeklinationResponse:
             deklination += '\n'
 
         result += f'\n{deklination}'
+        result += "Übersetzungen:\n"
+        for k, v in self.translations.items():
+            result += f"*{k}*: {', '.join(v)}\n"
+
         return result
 
 

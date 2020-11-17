@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+import re
+
 import requests
 from bs4 import BeautifulSoup as bs
 from bs4.element import Tag
-import re
 
 BASE_URL = 'https://www.verbformen.de'
 
@@ -85,12 +86,6 @@ class VerbResponse:
         return result
 
 
-def remove_html_tags(word_with_tags):
-    tags = ['<b>', '</b>', '<i>', '</i>', '<u>', '</u>', '<wbr/>']
-    for t in tags:
-        word_with_tags = word_with_tags.replace(t, '')
-    return word_with_tags.strip()
-
 class DeklinationResponse:
     def __init__(self, html):
         self.translations = {}
@@ -117,6 +112,10 @@ class DeklinationResponse:
                 pass
             elif line.startswith('Deklination'):
                 pass
+            elif line == 'Singular':
+                pass
+            elif line == 'Plural':
+                pass
             else:
                 chunks.append(line)
         self.deklination = re.sub(r"\n{2,}", "\n\n", '\n'.join(chunks))
@@ -137,11 +136,11 @@ class DeklinationResponse:
         return not self.word and not self.word_forms
 
     def to_string(self):
-        result = f"*{self.word}*\n_"
+        result = f"*{self.word}\n_"
         for word in self.word_forms:
             result += f"{word}; "
         result = result.rstrip("; ")
-        result += '_'
+        result += '*'
 
         deklination = ''
         keywords = ['Nom.', 'Gen.', 'Dat.', 'Akk.', 'Positiv', 'Komparativ', 'Superlativ']

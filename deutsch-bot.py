@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 import logging
 from functools import wraps
+from uuid import uuid4
 
-from telegram import ParseMode
-from telegram.ext import Updater, CommandHandler
+from telegram import ParseMode, \
+    InlineQueryResultArticle, \
+    InputTextMessageContent, \
+    InlineKeyboardButton, \
+    InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, InlineQueryHandler
 
-from config import TOKEN, WHITELIST
 import util.bot_tools as bt
+from config import TOKEN, WHITELIST
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO,
@@ -14,10 +19,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     )
 logger = logging.getLogger(__name__)
 
-INFO_MESSAGES = {'start': 'Hi!\n'
-                          'This bot can help you with learning Deutsch. \n'
-                          'Try it out!\n'
-                          'Use /help for more info',
+INFO_MESSAGES = {'start': 'Sprich Deutsch du Hurensohn',
                  'help': "Use the /search <verben> command to look up a German verb."}
 
 
@@ -44,8 +46,10 @@ def whitelist_only(func):
 @whitelist_only
 def start(update, context):
     """Send a message when the command /start is issued."""
-    deutsch_logo = "https://www.wiwo.de/images/dunkle-wolken-ueber-dem-bundestag/23226084/5-format3001.jpg"
-    update.message.reply_photo(deutsch_logo, caption=INFO_MESSAGES['start'])
+    deutsch_logo = "https://memegenerator.net/img/instances/78342523.jpg"
+    kb_markup = InlineKeyboardMarkup.from_button(
+        InlineKeyboardButton('Try in this chat', switch_inline_query_current_chat=''))
+    update.message.reply_photo(deutsch_logo, caption=INFO_MESSAGES['start'], reply_markup=kb_markup)
 
 
 @whitelist_only
@@ -61,14 +65,52 @@ def search(update, context):
         update.message.reply_text("You didn't provide a verb to lookup for.\n"
                                   "Use /help for more info")
     else:
-        verb = context.args[0]
-        logger.info(f"{user} searched '{verb}'")
-        verb_formen_response = bt.lookup_verbformen(query=verb)
+        query = context.args[0]
+        logger.info(f"{user} searched '{query}'")
+        verb_formen_response = bt.lookup_verbformen(query=query)
         if not verb_formen_response.is_empty():
             update.message.reply_text(verb_formen_response.to_string(), parse_mode='Markdown')
         else:
-            update.message.reply_text(f"Didn't find anything about '{verb}'.\n"
+            update.message.reply_text(f"Didn't find anything about '{query}'.\n"
                                       f"Try something else.")
+
+
+from util.bot_tools import VERBFORMEN_BASE_URL
+
+
+# @whitelist_only
+def inline_query(update, context):
+    user = update.inline_query.from_user["username"]
+    query = update.inline_query.query.lower().strip()
+
+    if not query:
+        return
+
+    logger.info(f'User @{user} searched "{query}"')
+
+    verb_formen_response = bt.lookup_verbformen(query=query)
+    if not verb_formen_response:
+        logger.info(f"Nothing was found on Verbformen for '{query}'")
+        return
+
+    buttons = [
+        InlineKeyboardButton(f"\"{query}\" on Verbformen 🌐", url=f"{VERBFORMEN_BASE_URL}/?w={query}"),
+        InlineKeyboardButton(f"\"{query}\" on Duden 🟡", url=f"https://www.duden.de/rechtschreibung/{query}")
+    ]
+    buttons_grid = [buttons[n:n + 1] for n in range(0, len(buttons), 1)]
+    inline_kb_markup = InlineKeyboardMarkup(buttons_grid)
+
+    message_content = InputTextMessageContent(
+        verb_formen_response.to_string(), parse_mode=ParseMode.MARKDOWN
+    )
+
+    update.inline_query.answer([InlineQueryResultArticle(
+        id=f"{uuid4()}",
+        title=query,
+        description="Verbformen Beschreibung",
+        input_message_content=message_content,
+        reply_markup=inline_kb_markup
+    )])
 
 
 def error(update, context):
@@ -77,9 +119,6 @@ def error(update, context):
 
 
 def main():
-    # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
     updater = Updater(TOKEN, use_context=True)
 
     dp = updater.dispatcher
@@ -87,7 +126,8 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", show_help))
     dp.add_handler(CommandHandler("search", search))
-    dp.add_error_handler(error)
+    dp.add_handler(InlineQueryHandler(inline_query))
+    # dp.add_error_handler(error)
 
     updater.start_polling()
     logger.info("BOT DEPLOYED. Ctrl+C to terminate")

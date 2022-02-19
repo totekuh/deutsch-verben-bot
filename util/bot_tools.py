@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 from bs4.element import Tag
 
-BASE_URL = 'https://www.verbformen.de'
+VERBFORMEN_BASE_URL = 'https://www.verbformen.de'
 
 konjugation = {
     'Präsens': [],
@@ -163,7 +163,7 @@ class DeklinationResponse:
 
 
 def lookup_verbformen(query):
-    url = f"{BASE_URL}/?w={query}"
+    url = f"{VERBFORMEN_BASE_URL}/?w={query}"
     resp = requests.get(url, headers={
         'User-Agent': 'Your Mom'
     })
@@ -176,8 +176,6 @@ def lookup_verbformen(query):
             return VerbResponse(html)
         elif 'Deklination' in title:
             return DeklinationResponse(html)
-        else:
-            print(f'Unsupported title: {title}')
     else:
         print(resp.status_code)
 

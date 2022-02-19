@@ -61,7 +61,7 @@ class VerbResponse:
         try:
             for lang in translations:
                 words = set()
-                for tag in soup.find('div', {'lang': lang}):
+                for tag in soup.find('dd', {'lang': lang}):
                     if type(tag) == Tag:
                         text = tag.text.strip()
                         if text and len(text) > 2:
@@ -123,7 +123,7 @@ class DeklinationResponse:
         try:
             for lang in translations:
                 words = set()
-                for tag in soup.find('div', {'lang': lang}):
+                for tag in soup.find('dd', {'lang': lang}):
                     if type(tag) == Tag:
                         text = tag.text.strip()
                         if text and len(text) > 2:
@@ -159,7 +159,6 @@ class DeklinationResponse:
         result += "Übersetzungen:\n"
         for k, v in self.translations.items():
             result += f"*{k}*: {', '.join(v)}\n"
-
         return result
 
 
@@ -170,12 +169,16 @@ def lookup_verbformen(query):
     })
     if resp.ok:
         html = resp.text
-        redirect_url = resp.request.url
-        if 'konjugation' in redirect_url:
+        soup = bs(html, 'html.parser')
+
+        title = soup.title.string
+        if 'Konjugation' in title:
             return VerbResponse(html)
-        elif 'deklination' in redirect_url:
+        elif 'Deklination' in title:
             return DeklinationResponse(html)
         else:
-            print(f'Unsupported redirect URL: {redirect_url}')
+            print(f'Unsupported title: {title}')
     else:
         print(resp.status_code)
+
+
